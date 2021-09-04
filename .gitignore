@@ -126,3 +126,4 @@ dmypy.json
 
 # La base de datos
 games.db
+/.idea/*
