@@ -15,7 +15,27 @@ def create_tables():
 				price REAL NOT NULL,
 				rate INTEGER NOT NULL
             )
-            """
+            """,
+        """
+        CREATE TABLE IF NOT EXISTS Componets(
+            StoreLocation    TEXT,
+        CompName    TEXT UNIQUE,
+        CompTypeNo    TEXT,
+        FactoryProdNo    TEXT,
+        OSEProdNo    TEXT,
+        InventoryCount    INTEGER,
+        InventorySafeCount    INTEGER,
+        CompLabel    TEXT,
+        CompSerialNo    TEXT,
+        Comment    TEXT,
+        CompUUID    INTEGER,
+        InstallMachine    TEXT,
+        PRIMARY KEY("CompUUID" AUTOINCREMENT) 
+    );""",
+        """CREATE TABLE IF NOT EXISTS CompPic (
+	    CompUUID	INTEGER UNIQUE,
+	    ImgSource	BLOB
+    );"""
     ]
     db = get_db()
     cursor = db.cursor()
