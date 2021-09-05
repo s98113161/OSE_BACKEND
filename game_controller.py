@@ -21,11 +21,11 @@ ____________________________________
 Creado por Parzibyte (https://parzibyte.me). Este encabezado debe mantenerse intacto,
 excepto si este es un proyecto de un estudiante.
 """
-from db import get_db
+from db import get_conn
 
 
 def insert_game(name, price, rate):
-    db = get_db()
+    db = get_conn()
     cursor = db.cursor()
     statement = "INSERT INTO games(name, price, rate) VALUES (?, ?, ?)"
     cursor.execute(statement, [name, price, rate])
@@ -34,7 +34,7 @@ def insert_game(name, price, rate):
 
 
 def update_game(id, name, price, rate):
-    db = get_db()
+    db = get_conn()
     cursor = db.cursor()
     statement = "UPDATE games SET name = ?, price = ?, rate = ? WHERE id = ?"
     cursor.execute(statement, [name, price, rate, id])
@@ -43,7 +43,7 @@ def update_game(id, name, price, rate):
 
 
 def delete_game(id):
-    db = get_db()
+    db = get_conn()
     cursor = db.cursor()
     statement = "DELETE FROM games WHERE id = ?"
     cursor.execute(statement, [id])
@@ -52,7 +52,7 @@ def delete_game(id):
 
 
 def get_by_id(id):
-    db = get_db()
+    db = get_conn()
     cursor = db.cursor()
     statement = "SELECT id, name, price, rate FROM games WHERE id = ?"
     cursor.execute(statement, [id])
@@ -60,7 +60,7 @@ def get_by_id(id):
 
 
 def get_games():
-    db = get_db()
+    db = get_conn()
     cursor = db.cursor()
     query = "SELECT id, name, price, rate FROM games"
     cursor.execute(query)

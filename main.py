@@ -1,6 +1,6 @@
 from flask import Flask, jsonify, request
 import game_controller
-from db import create_tables
+from db import create_tables, getDB
 
 app = Flask(__name__)
 
@@ -62,6 +62,7 @@ def after_request(response):
 
 if __name__ == "__main__":
     create_tables()
+    getDB().create_all()
     """
     Here you can change debug and port
     Remember that, in order to make this API functional, you must set debug in False
