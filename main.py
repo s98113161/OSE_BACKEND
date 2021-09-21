@@ -1,3 +1,5 @@
+import base64
+import json
 import os
 
 from flask import Flask, jsonify, request
@@ -62,7 +64,7 @@ def insert_game():
     data = {
         # 'compUUID': 'A1923',
         'storeLocation': 'Area1',
-        'compName': '電源供應器',
+        'compName': '風扇22',
         'compTypeNo': 'B001',
         'factoryProdNo': 'FAC001',
         'oseProdNo': 'oseP01',
@@ -75,7 +77,14 @@ def insert_game():
     comp = Components(**data)
     db.session.add(comp)
     db.session.commit()
-    return jsonify(comp)
+    print(comp.compUUID)
+
+    with open("test.jpg", "rb") as image_file:
+        encoded_string = base64.b64encode(image_file.read())
+    comp_pic = CompPic(compUUID=comp.compUUID, imgSource=encoded_string)
+    db.session.add(comp_pic)
+    db.session.commit()
+    return comp
 
 
 @app.route("/game", methods=["PUT"])
@@ -117,7 +126,6 @@ def after_request(response):
     return response
 
 
-
 class Components(db.Model):
     compUUID = db.Column(db.Integer, nullable=False, primary_key=True)
     storeLocation = db.Column(db.String(100), nullable=True)
@@ -155,6 +163,15 @@ class CompPic(db.Model):
     def __init__(self, compUUID, imgSource):
         self.compUUID = compUUID
         self.imgSource = imgSource
+
+
+class User(db.Model):
+    account = db.Column(db.BLOB, nullable=False, primary_key=True)
+
+    def __init__(self, compUUID, imgSource):
+        self.compUUID = compUUID
+        self.imgSource = imgSource
+
 
 if __name__ == "__main__":
     # create_tables()
