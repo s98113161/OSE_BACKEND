@@ -55,25 +55,14 @@ def get_games():
 
 @app.route("/new", methods=["POST"])
 def insert_game():
+    data = request.get_json()
     # game_details = request.get_json()
     # name = game_details["name"]
     # price = game_details["price"]
     # rate = game_details["rate"]
     # result = game_controller.insert_game(name, price, rate)
     # return jsonify(result)
-    data = {
-        # 'compUUID': 'A1923',
-        'storeLocation': 'Area1',
-        'compName': '風扇22',
-        'compTypeNo': 'B001',
-        'factoryProdNo': 'FAC001',
-        'oseProdNo': 'oseP01',
-        'inventoryCount': 50,
-        'inventorySafeCount': 20,
-        'compLabel': '標籤01',
-        'compSerialNo': 'ser001',
-        'comment': '我是註解，寫了一些註解 :D'
-    }
+
     comp = Components(**data)
     db.session.add(comp)
     db.session.commit()
@@ -84,7 +73,8 @@ def insert_game():
     comp_pic = CompPic(compUUID=comp.compUUID, imgSource=encoded_string)
     db.session.add(comp_pic)
     db.session.commit()
-    return comp
+
+    return comp.as_dict()
 
 
 @app.route("/game", methods=["PUT"])
@@ -154,7 +144,8 @@ class Components(db.Model):
         self.compLabel = compLabel
         self.compSerialNo = compSerialNo
         self.comment = comment
-
+    def as_dict(self):
+        return {c.name: getattr(self, c.name) for c in self.__table__.columns}
 
 class CompPic(db.Model):
     compUUID = db.Column(db.Integer, nullable=False, primary_key=True)
@@ -164,6 +155,9 @@ class CompPic(db.Model):
         self.compUUID = compUUID
         self.imgSource = imgSource
 
+    def as_dict(self):
+        return {c.name: getattr(self, c.name) for c in self.__table__.columns}
+
 
 class User(db.Model):
     account = db.Column(db.BLOB, nullable=False, primary_key=True)
@@ -171,6 +165,9 @@ class User(db.Model):
     def __init__(self, compUUID, imgSource):
         self.compUUID = compUUID
         self.imgSource = imgSource
+
+    def as_dict(self):
+        return {c.name: getattr(self, c.name) for c in self.__table__.columns}
 
 
 if __name__ == "__main__":
