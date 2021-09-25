@@ -23,13 +23,14 @@ app.config["JWT_SECRET_KEY"] = "super-secret"  # Change this!
 jwt = JWTManager(app)
 db = SQLAlchemy(app)
 
+""" JWT """
 
-# Create a route to authenticate your users and return JWTs. The
-# create_access_token() function is used to actually generate the JWT.
+
+# === GEN JWT TOKEN ====
 @app.route("/login", methods=["POST"])
 def login():
-    username = request.json.get("username", None)
-    password = request.json.get("password", None)
+    username = request.json.get("userID", None)
+    password = request.json.get("userPWD", None)
     if username != "test" or password != "test":
         return jsonify({"msg": "Bad username or password"}), 401
 
@@ -37,8 +38,7 @@ def login():
     return jsonify(access_token=access_token)
 
 
-# Protect a route with jwt_required, which will kick out requests
-# without a valid JWT present.
+# === 測試保護URL ====
 @app.route("/protected", methods=["GET"])
 @jwt_required()
 def protected():
@@ -47,22 +47,12 @@ def protected():
     return jsonify(logged_in_as=current_user), 200
 
 
-@app.route('/games', methods=["GET"])
-def get_games():
-    games = game_controller.get_games()
-    return jsonify(games)
+""" Components Controller """
 
 
-@app.route("/new", methods=["POST"])
+@app.route("/components/new", methods=["POST"])
 def insert_game():
     data = request.get_json()
-    # game_details = request.get_json()
-    # name = game_details["name"]
-    # price = game_details["price"]
-    # rate = game_details["rate"]
-    # result = game_controller.insert_game(name, price, rate)
-    # return jsonify(result)
-
     comp = Components(**data)
     db.session.add(comp)
     db.session.commit()
@@ -75,29 +65,6 @@ def insert_game():
     db.session.commit()
 
     return comp.as_dict()
-
-
-@app.route("/game", methods=["PUT"])
-def update_game():
-    game_details = request.get_json()
-    id = game_details["id"]
-    name = game_details["name"]
-    price = game_details["price"]
-    rate = game_details["rate"]
-    result = game_controller.update_game(id, name, price, rate)
-    return jsonify(result)
-
-
-@app.route("/game/<id>", methods=["DELETE"])
-def delete_game(id):
-    result = game_controller.delete_game(id)
-    return jsonify(result)
-
-
-@app.route("/game/<id>", methods=["GET"])
-def get_game_by_id(id):
-    game = game_controller.get_by_id(id)
-    return jsonify(game)
 
 
 """
@@ -116,6 +83,9 @@ def after_request(response):
     return response
 
 
+"""
+模組定義區
+"""
 class Components(db.Model):
     compUUID = db.Column(db.Integer, nullable=False, primary_key=True)
     storeLocation = db.Column(db.String(100), nullable=True)
@@ -144,8 +114,10 @@ class Components(db.Model):
         self.compLabel = compLabel
         self.compSerialNo = compSerialNo
         self.comment = comment
+
     def as_dict(self):
         return {c.name: getattr(self, c.name) for c in self.__table__.columns}
+
 
 class CompPic(db.Model):
     compUUID = db.Column(db.Integer, nullable=False, primary_key=True)
