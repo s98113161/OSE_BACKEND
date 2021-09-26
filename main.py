@@ -52,8 +52,8 @@ def protected():
 
 """ Components Controller """
 
-
-@app.route("/components/new", methods=["POST"])
+# 新增 Components
+@app.route("/components", methods=["POST"])
 def insert_comp():
     data = request.get_json()
     comp = Components(**data)
@@ -70,16 +70,22 @@ def insert_comp():
     return comp.to_dict()
 
 
+# 取得 Components
 @app.route("/components", methods=["GET"])
 def get_comps():
-    # User is the name of table that has a column name
-    comps = Components.query.all()
-    result = []
-    for u in comps:
-        result.append(u.to_dict())
-    return jsonify(result)
+    uuid = request.args.get('uuid')
+    if uuid is None:
+        comps = Components.query.all()
+        result = []
+        for u in comps:
+            result.append(u.to_dict())
+        return jsonify(result)
+    else:
+        result = db.session.query(Components).filter(Components.compUUID == uuid).first()
+        return result.to_dict()
 
 
+# 更新 Components
 @app.route("/components", methods=["PATCH"])
 def update_comps():
     data = request.get_json()
