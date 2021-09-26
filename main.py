@@ -103,6 +103,19 @@ def update_comps():
     return comp_dic
 
 
+# 移除 Components
+@app.route("/components", methods=["DELETE"])
+def delete_comps():
+    uuid = request.args.get('uuid')
+    if uuid is None:
+        return "uuid is required.", 400
+    else:
+        result = Components.query.filter_by(compUUID=uuid).delete()
+        print(result)
+        db.session.commit()
+        return str(result)
+
+
 """
 Enable CORS. Disable it if you don't need CORS
 """
