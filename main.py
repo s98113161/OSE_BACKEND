@@ -33,8 +33,8 @@ def login():
     password = request.json.get("userPWD", None)
     if username != "test" or password != "test":
         return jsonify({"msg": "Bad username or password"}), 401
-
-    access_token = create_access_token(identity=username)
+    additional_claims = {"role": "admin", "chName": "羅大佑"}
+    access_token = create_access_token(identity=username, additional_claims=additional_claims)
     return jsonify(access_token=access_token)
 
 
@@ -86,6 +86,8 @@ def after_request(response):
 """
 模組定義區
 """
+
+
 class Components(db.Model):
     compUUID = db.Column(db.Integer, nullable=False, primary_key=True)
     storeLocation = db.Column(db.String(100), nullable=True)
