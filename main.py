@@ -52,6 +52,7 @@ def protected():
 
 """ Components Controller """
 
+
 # 新增 Components
 @app.route("/components", methods=["POST"])
 def insert_comp():
