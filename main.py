@@ -9,6 +9,9 @@ from flask_jwt_extended import jwt_required
 from flask_jwt_extended import JWTManager
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
+
+from sqlalchemy_serializer import SerializerMixin
+
 import game_controller
 
 pjdir = os.path.abspath(os.path.dirname(__file__))
@@ -51,7 +54,7 @@ def protected():
 
 
 @app.route("/components/new", methods=["POST"])
-def insert_game():
+def insert_comp():
     data = request.get_json()
     comp = Components(**data)
     db.session.add(comp)
@@ -64,7 +67,33 @@ def insert_game():
     db.session.add(comp_pic)
     db.session.commit()
 
-    return comp.as_dict()
+    return comp.to_dict()
+
+
+@app.route("/components", methods=["GET"])
+def get_comps():
+    # User is the name of table that has a column name
+    comps = Components.query.all()
+    result = []
+    for u in comps:
+        result.append(u.to_dict())
+    return jsonify(result)
+
+
+@app.route("/components", methods=["PATCH"])
+def update_comps():
+    data = request.get_json()
+    comp = Components(**data)
+    # 轉成DICT
+    comp_dic = comp.to_dict()
+    # 移除新增時間，避免誤刪
+    comp_dic.pop("createTime")
+    comp_dic.pop("updateTime")
+    print(comp_dic)
+    result = db.session.query(Components).filter(Components.compUUID == comp_dic.get("compUUID")).update(comp_dic)
+    db.session.commit()
+    print(result)
+    return comp_dic
 
 
 """
@@ -88,7 +117,7 @@ def after_request(response):
 """
 
 
-class Components(db.Model):
+class Components(db.Model, SerializerMixin):
     compUUID = db.Column(db.Integer, nullable=False, primary_key=True)
     storeLocation = db.Column(db.String(100), nullable=True)
     compName = db.Column(db.String(30), unique=True, nullable=False)
@@ -105,7 +134,8 @@ class Components(db.Model):
     updateTime = db.Column(db.DateTime, onupdate=datetime.now, default=datetime.now)
 
     def __init__(self, storeLocation, compName, compTypeNo, factoryProdNo, oseProdNo, inventoryCount,
-                 inventorySafeCount, compLabel, compSerialNo, comment):
+                 inventorySafeCount, compLabel, compSerialNo, comment, compUUID=None):
+        self.compUUID = compUUID
         self.storeLocation = storeLocation
         self.compName = compName
         self.compTypeNo = compTypeNo
@@ -117,20 +147,14 @@ class Components(db.Model):
         self.compSerialNo = compSerialNo
         self.comment = comment
 
-    def as_dict(self):
-        return {c.name: getattr(self, c.name) for c in self.__table__.columns}
 
-
-class CompPic(db.Model):
+class CompPic(db.Model, SerializerMixin):
     compUUID = db.Column(db.Integer, nullable=False, primary_key=True)
     imgSource = db.Column(db.BLOB, nullable=True)
 
     def __init__(self, compUUID, imgSource):
         self.compUUID = compUUID
         self.imgSource = imgSource
-
-    def as_dict(self):
-        return {c.name: getattr(self, c.name) for c in self.__table__.columns}
 
 
 class User(db.Model):
@@ -139,9 +163,6 @@ class User(db.Model):
     def __init__(self, compUUID, imgSource):
         self.compUUID = compUUID
         self.imgSource = imgSource
-
-    def as_dict(self):
-        return {c.name: getattr(self, c.name) for c in self.__table__.columns}
 
 
 if __name__ == "__main__":
