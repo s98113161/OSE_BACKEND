@@ -34,9 +34,12 @@ db = SQLAlchemy(app)
 def login():
     username = request.json.get("userID", None)
     password = request.json.get("userPWD", None)
-    if username != "test" or password != "test":
+    if username == "admin" or password == "admin":
+        additional_claims = {"role": "admin", "chName": "羅大佑"}
+    elif username == "user" and password == "user":
+        additional_claims = {"role": "user", "chName": "陳使用"}
+    else:
         return jsonify({"msg": "Bad username or password"}), 401
-    additional_claims = {"role": "admin", "chName": "羅大佑"}
     access_token = create_access_token(identity=username, additional_claims=additional_claims)
     return jsonify(access_token=access_token)
 
