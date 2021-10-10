@@ -10,9 +10,14 @@ from flask_jwt_extended import JWTManager
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
 
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy_serializer import SerializerMixin
 
-import game_controller
+from werkzeug.utils import secure_filename
+
+UPLOAD_FOLDER = os.path.abspath(os.path.dirname(__file__))
+ALLOWED_EXTENSIONS = {'txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif'}
+
 
 pjdir = os.path.abspath(os.path.dirname(__file__))
 app = Flask(__name__)
@@ -23,6 +28,9 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + \
                                         os.path.join(pjdir, 'data.sqlite')
 # Setup the Flask-JWT-Extended extension
 app.config["JWT_SECRET_KEY"] = "super-secret"  # Change this!
+# for file upload
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+
 jwt = JWTManager(app)
 db = SQLAlchemy(app)
 
@@ -62,7 +70,11 @@ def insert_comp():
     data = request.get_json()
     comp = Components(**data)
     db.session.add(comp)
-    db.session.commit()
+    try:
+        db.session.commit()
+    except IntegrityError:
+        return "key值產品名稱不能重複", 500
+
     print(comp.compUUID)
 
     with open("test.jpg", "rb") as image_file:
@@ -118,6 +130,13 @@ def delete_comps():
         db.session.commit()
         return str(result)
 
+# 取得 Components images
+@app.route("/components/image", methods=["POST"])
+def get_comps_images():
+    uuid = request.args.get('uuid')
+    f = request.files['file']
+    f.save(secure_filename(f.filename))
+    return 'file uploaded successfully'
 
 """
 Enable CORS. Disable it if you don't need CORS
@@ -129,7 +148,7 @@ def after_request(response):
     response.headers[
         "Access-Control-Allow-Origin"] = "*"  # <- You can change "*" for a domain for example "http://localhost"
     response.headers["Access-Control-Allow-Credentials"] = "true"
-    response.headers["Access-Control-Allow-Methods"] = "POST, GET, OPTIONS, PUT, DELETE"
+    response.headers["Access-Control-Allow-Methods"] = "POST, GET, OPTIONS, PATCH, PUT, DELETE"
     response.headers[
         "Access-Control-Allow-Headers"] = "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization"
     return response
@@ -156,8 +175,9 @@ class Components(db.Model, SerializerMixin):
     createTime = db.Column(db.DateTime, default=datetime.now)
     updateTime = db.Column(db.DateTime, onupdate=datetime.now, default=datetime.now)
 
-    def __init__(self, storeLocation, compName, compTypeNo, factoryProdNo, oseProdNo, inventoryCount,
-                 inventorySafeCount, compLabel, compSerialNo, comment, compUUID=None):
+    def __init__(self, compName, storeLocation="", compTypeNo="", factoryProdNo="", oseProdNo="", inventoryCount=0,
+                 inventorySafeCount=0, compLabel="", compSerialNo="", comment="", compUUID=None, createTime="",
+                 updateTime=""):
         self.compUUID = compUUID
         self.storeLocation = storeLocation
         self.compName = compName
