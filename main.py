@@ -18,7 +18,6 @@ from werkzeug.utils import secure_filename
 UPLOAD_FOLDER = os.path.abspath(os.path.dirname(__file__))
 ALLOWED_EXTENSIONS = {'txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif'}
 
-
 pjdir = os.path.abspath(os.path.dirname(__file__))
 app = Flask(__name__)
 #  新版本的部份預設為none，會有異常，再設置True即可。
@@ -66,28 +65,23 @@ def protected():
 
 # 新增 Components
 @app.route("/components", methods=["POST"])
+@jwt_required()
 def insert_comp():
     data = request.get_json()
     comp = Components(**data)
+    comp.createUser = get_jwt_identity()
     db.session.add(comp)
     try:
         db.session.commit()
     except IntegrityError:
         return "key值產品名稱不能重複", 500
 
-    print(comp.compUUID)
-
-    with open("test.jpg", "rb") as image_file:
-        encoded_string = base64.b64encode(image_file.read())
-    comp_pic = CompPic(compUUID=comp.compUUID, imgSource=encoded_string)
-    db.session.add(comp_pic)
-    db.session.commit()
-
     return comp.to_dict()
 
 
 # 取得 Components
 @app.route("/components", methods=["GET"])
+@jwt_required()
 def get_comps():
     uuid = request.args.get('uuid')
     if uuid is None:
@@ -103,6 +97,7 @@ def get_comps():
 
 # 更新 Components
 @app.route("/components", methods=["PATCH"])
+@jwt_required()
 def update_comps():
     data = request.get_json()
     comp = Components(**data)
@@ -120,6 +115,7 @@ def update_comps():
 
 # 移除 Components
 @app.route("/components", methods=["DELETE"])
+@jwt_required()
 def delete_comps():
     uuid = request.args.get('uuid')
     if uuid is None:
@@ -130,13 +126,37 @@ def delete_comps():
         db.session.commit()
         return str(result)
 
+
 # 取得 Components images
-@app.route("/components/image", methods=["POST"])
+@app.route("/components/image", methods=["GET"])
+@jwt_required()
 def get_comps_images():
     uuid = request.args.get('uuid')
+    if uuid is None:
+        return "uuid is required.", 400
+    else:
+        comppics = db.session.query(CompPic).filter(CompPic.compUUID == uuid).all()
+        result = []
+        for u in comppics:
+            result.append(u.to_dict())
+        return jsonify(result)
+
+
+# 上傳 Components images
+@app.route("/components/image", methods=["POST"])
+@jwt_required()
+def upload_comps_images():
+    uuid = request.args.get('uuid')
+    if uuid is None:
+        return "uuid is required.", 400
     f = request.files['file']
-    f.save(secure_filename(f.filename))
-    return 'file uploaded successfully'
+    # 把 file 讀成 base64
+    encoded_string = base64.b64encode(f.read())
+    comp_pic = CompPic(compUUID=uuid, imgSource=encoded_string)
+    db.session.add(comp_pic)
+    db.session.commit()
+    return 'ok', 200
+
 
 """
 Enable CORS. Disable it if you don't need CORS
@@ -173,11 +193,14 @@ class Components(db.Model, SerializerMixin):
     comment = db.Column(db.String(500), nullable=True)
 
     createTime = db.Column(db.DateTime, default=datetime.now)
+    createUser = db.Column(db.String(100), nullable=True)
     updateTime = db.Column(db.DateTime, onupdate=datetime.now, default=datetime.now)
+    updateUser = db.Column(db.String(100), nullable=True)
 
     def __init__(self, compName, storeLocation="", compTypeNo="", factoryProdNo="", oseProdNo="", inventoryCount=0,
                  inventorySafeCount=0, compLabel="", compSerialNo="", comment="", compUUID=None, createTime="",
-                 updateTime=""):
+                 createUser="",
+                 updateTime="", updateUser=""):
         self.compUUID = compUUID
         self.storeLocation = storeLocation
         self.compName = compName
@@ -189,23 +212,41 @@ class Components(db.Model, SerializerMixin):
         self.compLabel = compLabel
         self.compSerialNo = compSerialNo
         self.comment = comment
+        self.createUser = createUser
+        self.updateUser = updateUser
 
 
 class CompPic(db.Model, SerializerMixin):
-    compUUID = db.Column(db.Integer, nullable=False, primary_key=True)
+    compPicUUID = db.Column(db.Integer, nullable=False, primary_key=True)
+    compUUID = db.Column(db.Integer, nullable=False)
     imgSource = db.Column(db.BLOB, nullable=True)
+    createTime = db.Column(db.DateTime, default=datetime.now)
 
     def __init__(self, compUUID, imgSource):
         self.compUUID = compUUID
         self.imgSource = imgSource
 
 
-class User(db.Model):
-    account = db.Column(db.BLOB, nullable=False, primary_key=True)
+class CompInvHistory(db.Model, SerializerMixin):
+    CompInvHistoryUUID = db.Column(db.Integer, nullable=False, primary_key=True)
+    compUUID = db.Column(db.Integer, nullable=False)
+    imgSource = db.Column(db.BLOB, nullable=True)
+    takenUser = db.Column(db.BLOB, nullable=True)
+    createTime = db.Column(db.DateTime, default=datetime.now)
 
     def __init__(self, compUUID, imgSource):
         self.compUUID = compUUID
         self.imgSource = imgSource
+
+
+class User(db.Model, SerializerMixin):
+    account = db.Column(db.String(100), nullable=False, primary_key=True)
+    password = db.Column(db.String(100), nullable=False)
+    createTime = db.Column(db.DateTime, default=datetime.now)
+
+    def __init__(self, account, password):
+        self.account = account
+        self.password = password
 
 
 if __name__ == "__main__":
