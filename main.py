@@ -101,11 +101,13 @@ def get_comps():
 def update_comps():
     data = request.get_json()
     comp = Components(**data)
+    comp.updateUser = get_jwt_identity()
     # 轉成DICT
     comp_dic = comp.to_dict()
     # 移除新增時間，避免誤刪
     comp_dic.pop("createTime")
     comp_dic.pop("updateTime")
+    #塞入更新使用者名稱
     print(comp_dic)
     result = db.session.query(Components).filter(Components.compUUID == comp_dic.get("compUUID")).update(comp_dic)
     db.session.commit()
@@ -122,6 +124,7 @@ def delete_comps():
         return "uuid is required.", 400
     else:
         result = Components.query.filter_by(compUUID=uuid).delete()
+        CompPic.query.filter_by(compUUID=uuid).delete()
         print(result)
         db.session.commit()
         return str(result)
@@ -170,6 +173,31 @@ def delete_comps_spec_image():
     print(result)
     db.session.commit()
     return str(result), 200
+
+
+# 取得user list
+@app.route("/users", methods=["GET"])
+@jwt_required()
+def get_users():
+    users = User.query.all()
+    result = []
+    for u in users:
+        result.append(u.to_dict())
+    return jsonify(result), 200
+
+
+# 取得user list
+@app.route("/users", methods=["POST"])
+@jwt_required()
+def create_user():
+    data = request.get_json()
+    user = User(**data)
+    db.session.add(user)
+    try:
+        db.session.commit()
+    except IntegrityError:
+        return "key值帳號名稱不能重複", 500
+    return user.to_dict()
 
 
 """
