@@ -158,6 +158,20 @@ def upload_comps_images():
     return 'ok', 200
 
 
+# 移除 特定 Components 的特定 images
+@app.route("/components/image", methods=["DELETE"])
+@jwt_required()
+def delete_comps_spec_image():
+    uuid = request.args.get('uuid')
+    imguuid = request.args.get('imguuid')
+    if uuid is None or imguuid is None:
+        return "uuid and imguuid is required.", 400
+    result = CompPic.query.filter_by(compUUID=uuid, compPicUUID=imguuid).delete()
+    print(result)
+    db.session.commit()
+    return str(result), 200
+
+
 """
 Enable CORS. Disable it if you don't need CORS
 """
