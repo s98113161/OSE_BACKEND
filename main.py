@@ -41,12 +41,19 @@ db = SQLAlchemy(app)
 def login():
     username = request.json.get("userID", None)
     password = request.json.get("userPWD", None)
-    if username == "admin" or password == "admin":
-        additional_claims = {"role": "admin", "chName": "羅大佑"}
-    elif username == "user" and password == "user":
-        additional_claims = {"role": "user", "chName": "陳使用"}
+    # 特權
+    if username == "admin" and password == "admin":
+        additional_claims = {"role": "admin", "chName": "admin"}
+        access_token = create_access_token(identity=username, additional_claims=additional_claims)
+        return jsonify(access_token=access_token)
+
+    user = User.query.filter_by(account=username).first()
+    if user is None:
+        return jsonify({"msg": "錯誤的使用者名稱"}), 401
+    if password == base64.b64decode(user.password).decode("UTF-8"):
+        additional_claims = {"role": user.role, "chName": user.account}
     else:
-        return jsonify({"msg": "Bad username or password"}), 401
+        return jsonify({"msg": "Bad password"}), 401
     access_token = create_access_token(identity=username, additional_claims=additional_claims)
     return jsonify(access_token=access_token)
 
@@ -107,7 +114,7 @@ def update_comps():
     # 移除新增時間，避免誤刪
     comp_dic.pop("createTime")
     comp_dic.pop("updateTime")
-    #塞入更新使用者名稱
+    # 塞入更新使用者名稱
     print(comp_dic)
     result = db.session.query(Components).filter(Components.compUUID == comp_dic.get("compUUID")).update(comp_dic)
     db.session.commit()
@@ -182,22 +189,36 @@ def get_users():
     users = User.query.all()
     result = []
     for u in users:
+        u.password = ""
         result.append(u.to_dict())
     return jsonify(result), 200
 
 
-# 取得user list
+# 新增user
 @app.route("/users", methods=["POST"])
 @jwt_required()
 def create_user():
     data = request.get_json()
     user = User(**data)
+    user.password = base64.b64encode(bytes(user.password, 'utf-8'))
     db.session.add(user)
     try:
         db.session.commit()
     except IntegrityError:
         return "key值帳號名稱不能重複", 500
-    return user.to_dict()
+    return "ok", 200
+
+
+# delete user
+@app.route("/users", methods=["DELETE"])
+@jwt_required()
+def delete_user():
+    account = request.args.get('account')
+    if account is None:
+        return "account is required.", 400
+    result = User.query.filter_by(account=account).delete()
+    db.session.commit()
+    return str(result), 200
 
 
 """
@@ -261,7 +282,7 @@ class Components(db.Model, SerializerMixin):
 class CompPic(db.Model, SerializerMixin):
     compPicUUID = db.Column(db.Integer, nullable=False, primary_key=True)
     compUUID = db.Column(db.Integer, nullable=False)
-    imgSource = db.Column(db.BLOB, nullable=True)
+    imgSource = db.Column(db.BLOB, nullable=False)
     createTime = db.Column(db.DateTime, default=datetime.now)
 
     def __init__(self, compUUID, imgSource):
@@ -272,8 +293,8 @@ class CompPic(db.Model, SerializerMixin):
 class CompInvHistory(db.Model, SerializerMixin):
     CompInvHistoryUUID = db.Column(db.Integer, nullable=False, primary_key=True)
     compUUID = db.Column(db.Integer, nullable=False)
-    imgSource = db.Column(db.BLOB, nullable=True)
-    takenUser = db.Column(db.BLOB, nullable=True)
+    imgSource = db.Column(db.BLOB, nullable=False)
+    takenUser = db.Column(db.BLOB, nullable=False)
     createTime = db.Column(db.DateTime, default=datetime.now)
 
     def __init__(self, compUUID, imgSource):
@@ -284,11 +305,13 @@ class CompInvHistory(db.Model, SerializerMixin):
 class User(db.Model, SerializerMixin):
     account = db.Column(db.String(100), nullable=False, primary_key=True)
     password = db.Column(db.String(100), nullable=False)
+    role = db.Column(db.String(100), nullable=False)
     createTime = db.Column(db.DateTime, default=datetime.now)
 
-    def __init__(self, account, password):
+    def __init__(self, account, password, role="user"):
         self.account = account
         self.password = password
+        self.role = role
 
 
 if __name__ == "__main__":
