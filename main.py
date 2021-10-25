@@ -132,7 +132,7 @@ def delete_comps():
     else:
         result = Components.query.filter_by(compUUID=uuid).delete()
         CompPic.query.filter_by(compUUID=uuid).delete()
-        print(result)
+        CompInvHistory.query.filter_by(compUUID=uuid).delete()
         db.session.commit()
         return str(result)
 
@@ -180,6 +180,44 @@ def delete_comps_spec_image():
     print(result)
     db.session.commit()
     return str(result), 200
+
+
+# 讀取領料紀錄 list
+@app.route("/components/history", methods=["GET"])
+@jwt_required()
+def invHistory():
+    uuid = request.args.get('uuid')
+    if uuid is None:
+        return "uuid is required.", 400
+    comInvHistorys = CompInvHistory.query.filter_by(compUUID=uuid).order_by(CompInvHistory.createTime.desc()).all()
+    result = []
+    for u in comInvHistorys:
+        result.append(u.to_dict())
+    return jsonify(result), 200
+
+
+# 領料/入庫
+@app.route("/components/inventory", methods=["POST"])
+@jwt_required()
+def inventory():
+    data = request.get_json()
+    compHistory = CompInvHistory(**data)
+
+    comp = Components.query.filter_by(compUUID=compHistory.compUUID).first()
+    compHistory.originalAmount = comp.inventoryCount
+    if compHistory.action == '取料':
+        compHistory.afterAmount = comp.inventoryCount - compHistory.actionAmount
+        if compHistory.afterAmount < 0:
+            return "領取數量超過庫存數量，當前庫存數量:" + str(comp.inventoryCount), 400
+    elif compHistory.action == '入庫':
+        compHistory.afterAmount = comp.inventoryCount + compHistory.actionAmount
+    comp.inventoryCount = compHistory.afterAmount
+    comp.updateUser = get_jwt_identity()
+    compHistory.takenUser = get_jwt_identity()
+    db.session.add(compHistory)
+    db.session.add(comp)
+    db.session.commit()
+    return compHistory.to_dict(), 200
 
 
 # 取得user list
@@ -291,15 +329,26 @@ class CompPic(db.Model, SerializerMixin):
 
 
 class CompInvHistory(db.Model, SerializerMixin):
-    CompInvHistoryUUID = db.Column(db.Integer, nullable=False, primary_key=True)
+    CompInvUUID = db.Column(db.Integer, nullable=False, primary_key=True)
     compUUID = db.Column(db.Integer, nullable=False)
-    imgSource = db.Column(db.BLOB, nullable=False)
-    takenUser = db.Column(db.BLOB, nullable=False)
+    # 安裝的機台
+    installMech = db.Column(db.String(100), nullable=False)
+    # 取料前數量
+    originalAmount = db.Column(db.Integer, nullable=False)
+    # 動作(入庫or取料)
+    action = db.Column(db.String(100), nullable=False)
+    # 數量
+    actionAmount = db.Column(db.Integer, nullable=False)
+    # 加總
+    afterAmount = db.Column(db.Integer, nullable=False)
+    takenUser = db.Column(db.String(100), nullable=False)
     createTime = db.Column(db.DateTime, default=datetime.now)
 
-    def __init__(self, compUUID, imgSource):
+    def __init__(self, compUUID, action, actionAmount, installMech=""):
         self.compUUID = compUUID
-        self.imgSource = imgSource
+        self.installMech = installMech
+        self.action = action
+        self.actionAmount = actionAmount
 
 
 class User(db.Model, SerializerMixin):
