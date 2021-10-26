@@ -2,7 +2,7 @@ import base64
 import json
 import os
 
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, send_file
 from flask_jwt_extended import create_access_token
 from flask_jwt_extended import get_jwt_identity
 from flask_jwt_extended import jwt_required
@@ -12,6 +12,8 @@ from datetime import datetime
 
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy_serializer import SerializerMixin
+
+import pandas as pd
 
 from werkzeug.utils import secure_filename
 
@@ -257,6 +259,15 @@ def delete_user():
     result = User.query.filter_by(account=account).delete()
     db.session.commit()
     return str(result), 200
+
+
+@app.route("/components/report", methods=["GET"])
+def LEGACY_getBaOrgNoReport():
+    df = pd.read_sql('SELECT * FROM components', con=db.engine)
+    df.columns = ['CompUUID', '儲存位置', '零件名稱', '零件型號', '原廠料號', 'OSE料號', '當前庫存數量', '安全庫存量', '零件廠牌', '零件序號', '備註', '建立人員',
+                  '建立時間', '更新時間', '更新人員']
+    df.to_excel('test.xlsx', index=False)
+    return send_file("test.xlsx", as_attachment=True, mimetype='application/octet-stream')
 
 
 """
