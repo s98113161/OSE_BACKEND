@@ -294,14 +294,14 @@ def after_request(response):
 class Components(db.Model, SerializerMixin):
     compUUID = db.Column(db.Integer, nullable=False, primary_key=True)
     storeLocation = db.Column(db.String(100), nullable=True)
-    compName = db.Column(db.String(30), unique=True, nullable=False)
+    compName = db.Column(db.String(40), unique=True, nullable=False)
     compTypeNo = db.Column(db.String(100), nullable=True)
     factoryProdNo = db.Column(db.String(100), nullable=True)
     oseProdNo = db.Column(db.String(100), nullable=True)
     inventoryCount = db.Column(db.Integer, nullable=True)
     inventorySafeCount = db.Column(db.Integer, nullable=True)
     compLabel = db.Column(db.String(10), nullable=True)
-    compSerialNo = db.Column(db.String(10), nullable=True)
+    compSerialNo = db.Column(db.String(40), nullable=True)
     comment = db.Column(db.String(500), nullable=True)
 
     createTime = db.Column(db.DateTime, default=datetime.now)
