@@ -264,10 +264,22 @@ def delete_user():
 @app.route("/components/report", methods=["GET"])
 def LEGACY_getBaOrgNoReport():
     df = pd.read_sql('SELECT * FROM components', con=db.engine)
-    df.columns = ['CompUUID', '儲存位置', '零件名稱', '零件型號', '原廠料號', 'OSE料號', '當前庫存數量', '安全庫存量', '零件廠牌', '零件序號', '備註', '建立人員',
-                  '建立時間', '更新時間', '更新人員']
+    df.columns = ['CompUUID', '儲存位置', '零件名稱', '零件型號', '原廠料號', 'OSE料號', '當前庫存數量', '安全庫存量', '零件廠牌', '零件序號', '備註', '建立時間',
+                  '建立人員', '更新時間', '更新人員']
     df.to_excel('test.xlsx', index=False)
     return send_file("test.xlsx", as_attachment=True, mimetype='application/octet-stream')
+
+
+@app.route("/components/inventory/report", methods=["GET"])
+def LEGACY_invreport():
+    uuid = request.args.get('uuid')
+    if uuid is None:
+        return "uuid is required.", 400
+    df = pd.read_sql(
+        "SELECT b.compName as '零件名稱' ,a.compUUID as 'UUID', a.installMech as '安裝機台', a.action as '動作',a.originalAmount as '動作前數量' ,a.afterAmount as '動作後數量', a.takenUser as '操作者',a.createTime as '資料建立日期' FROM comp_inv_history a INNER join components b on a.compUUID = b.compUUID  where a.compUUID = "+ uuid +" ;",
+        con=db.engine)
+    df.to_excel('test2.xlsx', index=False)
+    return send_file("test2.xlsx", as_attachment=True, mimetype='application/octet-stream')
 
 
 """
@@ -294,13 +306,13 @@ def after_request(response):
 class Components(db.Model, SerializerMixin):
     compUUID = db.Column(db.Integer, nullable=False, primary_key=True)
     storeLocation = db.Column(db.String(100), nullable=True)
-    compName = db.Column(db.String(40), unique=True, nullable=False)
+    compName = db.Column(db.String(40), nullable=False)
     compTypeNo = db.Column(db.String(100), nullable=True)
     factoryProdNo = db.Column(db.String(100), nullable=True)
     oseProdNo = db.Column(db.String(100), nullable=True)
     inventoryCount = db.Column(db.Integer, nullable=True)
     inventorySafeCount = db.Column(db.Integer, nullable=True)
-    compLabel = db.Column(db.String(10), nullable=True)
+    compLabel = db.Column(db.String(40), nullable=True)
     compSerialNo = db.Column(db.String(40), nullable=True)
     comment = db.Column(db.String(500), nullable=True)
 
